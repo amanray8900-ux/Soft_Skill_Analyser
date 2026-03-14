@@ -36,8 +36,8 @@ class ScoringEngine:
         else:
             pause_penalty = 15 + (pause_count - 5) * 8
 
-        pause_penalty = min(40, pause_penalty)
-        raw_score = (pitch_score * 0.4) + (vocab_score * 0.4)
+        pause_penalty = min(30, pause_penalty)
+        raw_score = (pitch_score * 0.5) + (vocab_score * 0.5)
         return max(0, int(raw_score - pause_penalty))
 
     def generate_report(self, audio_path):
