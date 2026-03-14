@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import imageio_ffmpeg
 import platform
+import stat
 
 def setup_ffmpeg():
     """
@@ -20,18 +21,31 @@ def setup_ffmpeg():
         ffmpeg_dir = os.path.dirname(ffmpeg_exe)
         ffmpeg_name = os.path.basename(ffmpeg_exe)
 
-        # On Windows, if the binary is not named 'ffmpeg.exe', we need a wrapper
-        if platform.system() == "Windows" and ffmpeg_name.lower() != "ffmpeg.exe":
+        # If the binary name is precisely "ffmpeg" (or "ffmpeg.exe" on Windows),
+        # we can just add its directory to PATH.
+        target_name = "ffmpeg.exe" if platform.system() == "Windows" else "ffmpeg"
+        
+        if ffmpeg_name.lower() == target_name.lower():
+            os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+        else:
+            # Different name (e.g., ffmpeg-win64-v7.1.exe). Create a wrapper.
             tmp_dir = tempfile.mkdtemp(prefix="ffmpeg_wrapper_")
-            bat_path = os.path.join(tmp_dir, "ffmpeg.bat")
-            with open(bat_path, "w") as f:
-                f.write(f'@echo off\n"{ffmpeg_exe}" %*\n')
+            
+            if platform.system() == "Windows":
+                wrapper_path = os.path.join(tmp_dir, "ffmpeg.bat")
+                with open(wrapper_path, "w") as f:
+                    f.write(f'@echo off\n"{ffmpeg_exe}" %*\n')
+            else:
+                # Unix-like (Linux/MacOS)
+                wrapper_path = os.path.join(tmp_dir, "ffmpeg")
+                with open(wrapper_path, "w") as f:
+                    f.write(f'#!/bin/sh\n"{ffmpeg_exe}" "$@"\n')
+                # Make the wrapper executable
+                st = os.stat(wrapper_path)
+                os.chmod(wrapper_path, st.st_mode | stat.S_IEXEC)
             
             # Prepend the wrapper directory to PATH
             os.environ["PATH"] = tmp_dir + os.pathsep + os.environ.get("PATH", "")
-        else:
-            # For MacOS/Linux or if named correctly, just add the directory
-            os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
         
         return True
     except Exception as e:
