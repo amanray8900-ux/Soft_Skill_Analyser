@@ -5,26 +5,45 @@ from langchain_core.prompts import PromptTemplate
 from dotenv import load_dotenv
 
 load_dotenv()
-
 class TextAnalyzer:
     def __init__(self):
-        # Initialized with a simple filler word set
-        self.filler_words = {"um", "uh", "uhh", "umm", "like", "actually", "basically"}
+        self.filler_words = {
+            "um", "uh", "uhh", "umm",
+            "like",
+            "actually",
+            "basically",
+            "so",
+            "right",
+            "well",
+            "yeah",
+        }
+        
+        self.filler_phrases = [
+            "you know",
+            "i mean",
+            "kind of",
+            "sort of",
+            "you know what i mean",
+            "i guess",
+            "i think",
+            "i mean like",
+            "you know like",
+        ]
         
     def analyze(self, text):
-        # Convert to lower and find all words using regex
-        # This handles tokens similarly to basic NLP without the heavy spacy/pydantic dependencies
         words = re.findall(r"\b\w+\b", text.lower())
         total_words = len(words)
         unique_words = len(set(words))
         
-        # Simple filler word counting
         filler_count = sum(1 for word in words if word in self.filler_words)
         
-        # Add common multi-word filler phrases
         text_lower = text.lower()
-        filler_count += text_lower.count("you know")
-        filler_count += text_lower.count("i mean")
+        phrase_count = 0
+        for phrase in self.filler_phrases:
+            occurrences = text_lower.count(phrase)
+            phrase_count += occurrences
+            
+        filler_count += phrase_count
         
         vocab_richness = (unique_words / total_words) if total_words > 0 else 0
         
@@ -32,7 +51,8 @@ class TextAnalyzer:
             "total_words": total_words,
             "unique_words": unique_words,
             "filler_count": filler_count,
-            "vocab_richness": vocab_richness
+            "vocab_richness": vocab_richness,
+            "phrase_fillers": phrase_count
         }
 
     def semantic_analysis(self, text):
@@ -53,9 +73,27 @@ class TextAnalyzer:
             }
         ]
             
+
         prompt_template = PromptTemplate(
             input_variables=["transcript"],
-            template="Analyze the following transcript for communication structure, clarity, and professionalism. Provide 3 short, actionable bullet points of feedback.\n\nTranscript: {transcript}\n\nFeedback:"
+            template="""You are an expert communication coach and speech analyst with years of experience training professionals, executives, and public speakers.
+
+            Carefully analyze the following spoken transcript and evaluate it across these dimensions:
+        - Clarity and articulation of ideas
+        - Logical structure and flow of communication
+        - Professional tone and language choice
+        - Conciseness and avoidance of redundancy
+        - Confidence and assertiveness in delivery
+
+        Transcript:
+        {transcript}
+
+        Provide exactly 3 concise, actionable bullet points of coaching feedback. Each bullet point should:
+        - Identify a specific strength or weakness observed in the transcript
+        - Explain why it matters in a professional communication context
+        - Suggest a concrete, practical improvement the speaker can implement immediately
+
+        Feedback:"""
         )
         
         last_error = None
@@ -85,3 +123,5 @@ class TextAnalyzer:
             return f"Error: All available LLM models failed. Last error: {last_error}"
             
         return "No API keys provided for Cerebras (CEREBUS_API_KEY). Skipping deep semantic analysis."
+
+
