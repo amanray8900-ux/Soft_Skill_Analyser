@@ -31,10 +31,16 @@ if uploaded_file is not None:
         try:
             engine = get_scoring_engine()
             report = engine.generate_report(temp_audio_path)
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            st.error(f"Error processing audio: {e}")
+            st.expander("Show internal traceback (Debug Mode)").code(error_details)
+            st.stop()
             
-            # --- TOP ROW (CARDS) ---
-            st.markdown("### Executive Summary")
-            cols = st.columns(4)
+        # --- TOP ROW (CARDS) ---
+        st.markdown("### Executive Summary")
+        cols = st.columns(4)
             
             with cols[0]:
                 with st.container(border=True):
